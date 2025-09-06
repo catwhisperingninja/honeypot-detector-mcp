@@ -1,23 +1,23 @@
 import asyncio
+import os
+# noqa: F401
 import httpx
 from typing import Dict, Any
 from mcp.server.fastmcp import FastMCP, Context
 from mcp.server.fastmcp.prompts import base
 
-# Configuration
-API_KEY = None  # Optional: Replace with your honeypot.is API key if available
-HONEYPOT_API_URL = "https://api.honeypot.is/v2/IsHoneypot"
+# Configuration - NO API KEY REQUIRED
+HONEYPOT_API_URL = "https://honeypot.is/ethereum"
 
 # Initialize FastMCP server
 mcp = FastMCP(
-    name="Honeypot Detector",
-    dependencies=["httpx"]
+    name="Honeypot Detector"
 )
 
 async def fetch_honeypot_data(address: str, ctx: Context) -> Dict[str, Any]:
     """Fetch data from honeypot.is API"""
     async with httpx.AsyncClient() as client:
-        headers = {"X-API-KEY": API_KEY} if API_KEY else {}
+        headers: Dict[str, str] = {}
         params = {"address": address}
         try:
             response = await client.get(HONEYPOT_API_URL, headers=headers, params=params)
@@ -45,7 +45,7 @@ async def check_honeypot(address: str, ctx: Context) -> str:
         raise ValueError("Invalid address format")
 
     data = await fetch_honeypot_data(address, ctx)
-    
+
     # Extract relevant fields
     is_honeypot = data.get("honeypotResult", {}).get("isHoneypot", False)
     risk = data.get("summary", {}).get("risk", "unknown")

@@ -1,3 +1,9 @@
-runtime: typescript
+runtime: python
 startCommand:
   type: http
+  command: poetry run uvicorn http_app:app --host 0.0.0.0 --port ${PORT:-8288}
+  healthCheckPath: /healthz
+# Optional environment variables used by the server
+env:
+  - name: HONEYPOT_API_KEY
+    required: false
