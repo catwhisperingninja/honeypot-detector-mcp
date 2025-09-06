@@ -1,20 +1,15 @@
 import asyncio
 import os
-# noqa: F401
 import httpx
 from typing import Dict, Any
-from mcp.server.fastmcp import FastMCP, Context
-from mcp.server.fastmcp.prompts import base
+from fastapi import FastAPI, Request
 
 # Configuration - NO API KEY REQUIRED
 HONEYPOT_API_URL = "https://honeypot.is/ethereum"
 
-# Initialize FastMCP server
-mcp = FastMCP(
-    name="Honeypot Detector"
-)
+app = FastAPI()
 
-async def fetch_honeypot_data(address: str, ctx: Context) -> Dict[str, Any]:
+async def fetch_honeypot_data(address: str) -> Dict[str, Any]:
     """Fetch data from honeypot.is API"""
     async with httpx.AsyncClient() as client:
         headers: Dict[str, str] = {}
@@ -26,27 +21,13 @@ async def fetch_honeypot_data(address: str, ctx: Context) -> Dict[str, Any]:
         except httpx.HTTPStatusError as e:
             raise ValueError(f"API request failed: {str(e)}")
 
-@mcp.tool()
-async def check_honeypot(address: str, ctx: Context) -> str:
-    """Check if a token address is a honeypot using honeypot.is API
-
-    Supports tokens on Ethereum, Binance Smart Chain (BSC) and Base.
-
-    Args:
-        address: Token address to check (e.g., 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48)
-
-    Returns:
-        Markdown string containing honeypot analysis results
-    """
-    ctx.info(f"Checking honeypot status for address {address}")
-
-    # Validate address format (basic check)
+@app.get("/check_honeypot")
+async def check_honeypot(address: str) -> str:
+    """Check if a token address is a honeypot using honeypot.is API"""
     if not address.startswith("0x") or len(address) != 42:
         raise ValueError("Invalid address format")
 
-    data = await fetch_honeypot_data(address, ctx)
-
-    # Extract relevant fields
+    data = await fetch_honeypot_data(address)
     is_honeypot = data.get("honeypotResult", {}).get("isHoneypot", False)
     risk = data.get("summary", {}).get("risk", "unknown")
     token_name = data.get("token", {}).get("name", "Unknown")
@@ -55,7 +36,6 @@ async def check_honeypot(address: str, ctx: Context) -> str:
     transfer_tax = data.get("simulationResult", {}).get("transferTax", "N/A")
     is_open_source = data.get("contractCode", {}).get("openSource", "Unknown")
 
-    # Format as Markdown
     result = f"""# Honeypot Analysis for {token_name}
 - **Address**: {address}
 - **Is Honeypot**: {is_honeypot}
@@ -67,18 +47,6 @@ async def check_honeypot(address: str, ctx: Context) -> str:
 """
     return result
 
-@mcp.prompt()
-def analyze_honeypot(address: str) -> list[base.Message]:
-    """Prompt to analyze a token address for honeypot status
-
-    Args:
-        address: Token address to analyze
-    """
-    return [
-        base.UserMessage("Please analyze this token address for potential honeypot risks:"),
-        base.UserMessage(f"Address: {address}"),
-        base.AssistantMessage("I'll check the honeypot status using the honeypot.is API.")
-    ]
-
 if __name__ == "__main__":
-    mcp.run()
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8288)

@@ -2,7 +2,7 @@ import os
 from typing import Any
 
 from fastapi import FastAPI
-the existing FastMCP server and tools defined in main.py
+
 # This keeps all tools unchanged and simply exposes them over HTTP.
 from main import mcp  # noqa: E402
 
